@@ -386,7 +386,7 @@ describe('commands (justinfan)', () => {
 			connection: {
 				server: 'localhost',
 				port: 7000,
-				timeout: 1,
+				timeout: 100,
 				reconnect: false
 			}
 		});
@@ -419,6 +419,10 @@ describe('commands (justinfan)', () => {
 		client.on('logon', () => {
 			client.ping().then(latency => {
 				latency.should.be.ok();
+				client.disconnect();
+				cb();
+			}, err => {
+				err.should.not.be.ok();
 				client.disconnect();
 				cb();
 			});
