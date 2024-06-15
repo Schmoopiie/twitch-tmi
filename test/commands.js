@@ -96,20 +96,6 @@ const tests = [ {
 		msg_channel_suspended
 	]
 }, {
-	command: 'host',
-	inputParams: [ '#local7000', 'schmoopiie' ],
-	returnedParams: [ '#local7000', 'schmoopiie', 5 ],
-	serverTest: '/host',
-	serverCommand: '@msg-id=hosts_remaining :tmi.twitch.tv NOTICE #local7000 :5',
-	errorCommands: [
-		'@msg-id=bad_host_error :tmi.twitch.tv NOTICE #local7000 :There was a problem hosting channel_to_host. Please try again in a minute.',
-		'@msg-id=bad_host_hosting :tmi.twitch.tv NOTICE #local7000 :This channel is already hosting that channel.',
-		'@msg-id=bad_host_rate_exceeded :tmi.twitch.tv NOTICE #local7000 :Host target cannot be changed more than 3 times every half hour.',
-		'@msg-id=usage_host :tmi.twitch.tv NOTICE #local7000 :Usage: "/host " - Host another channel.',
-		no_permission
-		// msg_channel_suspended
-	]
-}, {
 	command: 'join',
 	inputParams: [ '#local7000' ],
 	returnedParams: [ '#local7000' ],
@@ -338,18 +324,6 @@ const tests = [ {
 	returnedParams: [ '#local7000', 'baduser' ],
 	serverTest: '/unban',
 	serverCommand: '@msg-id=untimeout_success :tmi.twitch.tv NOTICE #local7000 :baduser'
-}, {
-	command: 'unhost',
-	inputParams: [ '#local7000' ],
-	returnedParams: [ '#local7000' ],
-	serverTest: '/unhost',
-	serverCommand: ':tmi.twitch.tv HOSTTARGET #local7000 :- 0',
-	errorCommands: [
-		'@msg-id=not_hosting :tmi.twitch.tv NOTICE #local7000 :No channel is currently being hosted.',
-		'@msg-id=usage_unhost :tmi.twitch.tv NOTICE #local7000 :Usage: "/unhost"',
-		no_permission
-		// msg_channel_suspended
-	]
 }, {
 	command: 'unmod',
 	inputParams: [ '#local7000', 'moddymcmodface' ],

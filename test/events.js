@@ -159,22 +159,6 @@ const events = [ {
 		}
 	]
 }, {
-	name: 'hosted',
-	data: ':jtv!~jtv@jtv.tmi.twitch.tv PRIVMSG #schmoopiie :Username is now hosting you for 11 viewers.',
-	expected: [
-		'#schmoopiie',
-		'username',
-		11
-	]
-}, {
-	name: 'hosting',
-	data: ':tmi.twitch.tv HOSTTARGET #schmoopiie :schmoopiie 3',
-	expected: [
-		'#schmoopiie',
-		'schmoopiie',
-		3
-	]
-}, {
 	name: 'join',
 	data: ':schmoopiie!schmoopiie@schmoopiie.tmi.twitch.tv JOIN #schmoopiie',
 	expected: [
@@ -550,13 +534,6 @@ const events = [ {
 			'room-id': '20624989',
 			'target-user-id': '20624989'
 		}
-	]
-}, {
-	name: 'unhost',
-	data: ':tmi.twitch.tv HOSTTARGET #schmoopiie :- 0',
-	expected: [
-		'#schmoopiie',
-		0
 	]
 }, {
 	name: 'unmod',
