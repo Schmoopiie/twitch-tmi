@@ -45,7 +45,6 @@
     "url": "https://github.com/tmijs/tmi.js/issues"
   },
   "dependencies": {
-    "node-fetch": "2.7.0",
     "ws": "8.17.0"
   },
   "devDependencies": {
