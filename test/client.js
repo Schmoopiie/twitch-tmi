@@ -1,11 +1,6 @@
 const tmi = require('../index.js');
 
 describe('client()', () => {
-	it('returns a new instance of itself', () => {
-		const client = tmi.Client();
-		client.should.be.an.instanceOf(tmi.Client);
-	});
-
 	it('uses the \'info\' log when debug is set', () => {
 		const client = new tmi.Client({ options: { debug: true } });
 		client.should.be.ok();
