@@ -67,7 +67,7 @@ describe('commands (justinfan)', () => {
 	});
 
 	it('handles commands when disconnected', function(cb) {
-		this.client.subscribers('local7000').then(noop, err => {
+		this.client.join('local7000').then(noop, err => {
 			err.should.eql('Not connected to server.');
 			cb();
 		});
@@ -125,7 +125,7 @@ describe('commands (justinfan)', () => {
 			server.on('connection', ws => {
 				ws.on('message', message => {
 					// Ensure that the message starts with NICK
-					if(!message.indexOf('NICK')) {
+					if(message.indexOf('NICK') === 0) {
 						const user = client.getUsername();
 						ws.send(`:${user}! JOIN #local7000`);
 						return;
@@ -163,7 +163,7 @@ describe('commands (justinfan)', () => {
 					server.on('connection', ws => {
 						ws.on('message', message => {
 							// Ensure that the message starts with NICK
-							if(!message.indexOf('NICK')) {
+							if(message.indexOf('NICK') === 0) {
 								const user = client.getUsername();
 								ws.send(`:${user}! JOIN #local7000`);
 								return;
@@ -195,7 +195,7 @@ describe('commands (justinfan)', () => {
 				server.on('connection', ws => {
 					ws.on('message', message => {
 						// Ensure that the message starts with NICK
-						if(!message.indexOf('NICK')) {
+						if(message.indexOf('NICK') === 0) {
 							ws.send('dummy');
 							return;
 						}
@@ -226,7 +226,7 @@ describe('commands (identity)', () => {
 				port: 7000
 			},
 			identity: {
-				username: 'schmoopiie'
+				password: 'oauth:notschmoopiie'
 			}
 		});
 	});
@@ -237,24 +237,42 @@ describe('commands (identity)', () => {
 		this.client = null;
 	});
 
+	/**
+	 * @param {WebSocket} ws
+	 * @param {Buffer} message
+	 */
+	function respondWithClientNonce(ws, message) {
+		if(!message.includes('PRIVMSG')) {
+			return;
+		}
+		const nonceBase = 'client-nonce=tmi.js_';
+		const nonceStart = message.indexOf(nonceBase);
+		if(nonceStart === -1) {
+			throw new Error('Nonce not found in PRIVMSG');
+		}
+		const nextSemicolon = message.indexOf(';', nonceStart);
+		const nextSpace = message.indexOf(' ', nonceStart);
+		const nonceEnd = ~nextSemicolon ? nextSemicolon : ~nextSpace ? nextSpace : message.length;
+		const nonce = message.subarray(nonceStart, nonceEnd - nonceStart + 1);
+		ws.send(`@badge-info=;${nonce};color=#177DE3;display-name=;emote-sets=;id=123456;mod=0;subscriber=1;user-type= :tmi.twitch.tv USERSTATE #local7000`);
+	}
+
 	it('should handle action', function(cb) {
 		const { client, server } = this;
 
-		server.on('connection', ws => {
-			ws.on('message', message => {
-				if(~message.indexOf('Hello')) {
-					ws.send(':tmi.twitch.tv PRIVMSG #local7000 :\u0001ACTION Hello :)\u0001');
-				}
-			});
-		});
+		server.on('connection', ws => ws.on('message', message => respondWithClientNonce(ws, message)));
 
 		client.on('logon', () => {
 			client.action('#local7000', 'Hello').then(data => {
-				data[0].should.eql('#local7000');
-				data[1].should.eql('\u0001ACTION Hello\u0001');
-				client.disconnect();
-				cb();
-			});
+				try {
+					data[0].should.eql('#local7000');
+					data[1].should.eql('Hello');
+					client.disconnect();
+					cb();
+				} catch(err) {
+					cb(err);
+				}
+			}, cb);
 		});
 
 		client.connect().catch(catchConnectError);
@@ -263,21 +281,19 @@ describe('commands (identity)', () => {
 	it('should handle say', function(cb) {
 		const { client, server } = this;
 
-		server.on('connection', ws => {
-			ws.on('message', message => {
-				if(~message.indexOf('Hello')) {
-					ws.send(':tmi.twitch.tv PRIVMSG #local7000 :Hello');
-				}
-			});
-		});
+		server.on('connection', ws => ws.on('message', message => respondWithClientNonce(ws, message)));
 
 		client.on('logon', () => {
 			client.say('#local7000', 'Hello').then(data => {
-				data[0].should.eql('#local7000');
-				data[1].should.eql('Hello');
-				client.disconnect();
-				cb();
-			});
+				try {
+					data[0].should.eql('#local7000');
+					data[1].should.eql('Hello');
+					client.disconnect();
+					cb();
+				} catch(err) {
+					cb(err);
+				}
+			}, cb);
 		});
 
 		client.connect().catch(catchConnectError);
@@ -295,14 +311,7 @@ describe('commands (identity)', () => {
 		const lorem = 'lorem '.repeat(89) + 'ipsum';
 		let calls = 0;
 
-		server.on('connection', ws => {
-			ws.on('message', message => {
-				message = message.toString();
-				if(~message.indexOf('PRIVMSG')) {
-					ws.send(`:tmi.twitch.tv PRIVMSG #local7000 :${message.split(':')[1]}`);
-				}
-			});
-		});
+		server.on('connection', ws => ws.on('message', message => respondWithClientNonce(ws, message)));
 
 		client.on('chat', (channel, user, message) => {
 			calls++;
@@ -313,9 +322,7 @@ describe('commands (identity)', () => {
 			}
 		});
 
-		client.on('logon', () => {
-			client.say('#local7000', lorem);
-		});
+		client.on('logon', () => client.say('#local7000', lorem).catch(cb));
 
 		client.connect().catch(catchConnectError);
 	});
@@ -325,14 +332,7 @@ describe('commands (identity)', () => {
 		const lorem = 'lorem'.repeat(100) + 'ipsum';
 		let calls = 0;
 
-		server.on('connection', ws => {
-			ws.on('message', message => {
-				message = message.toString();
-				if(~message.indexOf('PRIVMSG')) {
-					ws.send(`:tmi.twitch.tv PRIVMSG #local7000 :${message.split(':')[1]}`);
-				}
-			});
-		});
+		server.on('connection', ws => ws.on('message', message => respondWithClientNonce(ws, message)));
 
 		client.on('chat', (channel, user, message) => {
 			calls++;
@@ -343,70 +343,8 @@ describe('commands (identity)', () => {
 			}
 		});
 
-		client.on('logon', () => {
-			client.say('#local7000', lorem);
-		});
+		client.on('logon', () => client.say('#local7000', lorem).catch(cb));
 
 		client.connect().catch(catchConnectError);
-	});
-
-	[ '/me', '\\me', '.me' ].forEach(me => {
-		it(`should handle ${me} say`, function(cb) {
-			const { client, server } = this;
-
-			server.on('connection', ws => {
-				ws.on('message', message => {
-					if(~message.indexOf('Hello')) {
-						ws.send(':tmi.twitch.tv PRIVMSG #local7000 :Hello');
-					}
-				});
-			});
-
-			client.on('logon', () => {
-				client.say('#local7000', `${me} Hello`).then(data => {
-					data[0].should.eql('#local7000');
-					data[1].should.eql('\u0001ACTION Hello\u0001');
-					client.disconnect();
-					cb();
-				});
-			});
-
-			client.connect().catch(catchConnectError);
-		});
-	});
-
-	[ '.', '/', '\\' ].forEach(prefix => {
-		it(`should handle ${prefix} say`, function(cb) {
-			const { client } = this;
-
-			client.on('logon', () => {
-				client.say('#local7000', `${prefix}FOO`).then(data => {
-					data[0].should.eql('#local7000');
-					data.length.should.eql(2);
-					client.disconnect();
-					cb();
-				});
-			});
-
-			client.connect().catch(catchConnectError);
-		});
-	});
-
-	[ '..' ].forEach(prefix => {
-		it(`should handle ${prefix}message say`, function(cb) {
-			const { client } = this;
-
-			client.on('logon', () => {
-				client.say('#local7000', `${prefix}FOO`).then(data => {
-					data[0].should.eql('#local7000');
-					data[1].should.eql(`${prefix}FOO`);
-					data.length.should.eql(2);
-					client.disconnect();
-					cb();
-				});
-			});
-
-			client.connect().catch(catchConnectError);
-		});
 	});
 });

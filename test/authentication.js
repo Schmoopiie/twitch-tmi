@@ -46,7 +46,7 @@ describe('handling authentication', () => {
 
 			server.on('connection', ws => {
 				ws.on('message', message => {
-					if(!message.indexOf('NICK')) {
+					if(message.indexOf('NICK') === 0) {
 						ws.send(test);
 					}
 				});
