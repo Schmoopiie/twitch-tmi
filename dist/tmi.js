@@ -13,252 +13,66 @@ var tmi = (() => {
   // lib/events.js
   var require_events = __commonJS({
     "lib/events.js"(exports, module) {
-      function EventEmitter() {
-        this._events = this._events || {};
-        this._maxListeners = this._maxListeners || void 0;
-      }
+      var EventEmitter = class {
+        constructor() {
+          this._events = /* @__PURE__ */ new Map();
+        }
+        emit(type, ...args) {
+          const listeners = this._events.get(type);
+          if (!listeners) {
+            return false;
+          }
+          for (const listener of listeners) {
+            listener.apply(this, args);
+          }
+          return true;
+        }
+        emits(types, values) {
+          for (let i = 0; i < types.length; i++) {
+            const val = i < values.length ? values[i] : values[values.length - 1];
+            this.emit.apply(this, [types[i]].concat(val));
+          }
+        }
+        addListener(type, listener) {
+          if (!this._events.has(type)) {
+            this._events.set(type, /* @__PURE__ */ new Set());
+          }
+          this._events.get(type).add(listener);
+        }
+        on(type, listener) {
+          this.addListener(type, listener);
+        }
+        once(type, listener) {
+          const wrapped = (...args) => {
+            this.removeListener(type, wrapped);
+            listener.apply(this, args);
+          };
+          this.addListener(type, wrapped);
+        }
+        removeListener(type, listener) {
+          if (!this._events.has(type)) {
+            return;
+          }
+          this._events.get(type).delete(listener);
+        }
+        off(type, listener) {
+          this.removeListener(type, listener);
+        }
+        removeAllListeners(type) {
+          this._events.delete(type);
+        }
+        listeners(type) {
+          return this._events.get(type);
+        }
+        listenerCount(type) {
+          const listeners = this._events.get(type);
+          if (!listeners) {
+            return 0;
+          }
+          return listeners.size;
+        }
+      };
       module.exports = EventEmitter;
-      EventEmitter.EventEmitter = EventEmitter;
-      EventEmitter.prototype._events = void 0;
-      EventEmitter.prototype._maxListeners = void 0;
-      EventEmitter.defaultMaxListeners = 10;
-      EventEmitter.prototype.setMaxListeners = function(n) {
-        if (!isNumber(n) || n < 0 || isNaN(n)) {
-          throw TypeError("n must be a positive number");
-        }
-        this._maxListeners = n;
-        return this;
-      };
-      EventEmitter.prototype.emit = function(type) {
-        var er, handler, len, args, i, listeners;
-        if (!this._events) {
-          this._events = {};
-        }
-        if (type === "error") {
-          if (!this._events.error || isObject(this._events.error) && !this._events.error.length) {
-            er = arguments[1];
-            if (er instanceof Error) {
-              throw er;
-            }
-            throw TypeError('Uncaught, unspecified "error" event.');
-          }
-        }
-        handler = this._events[type];
-        if (isUndefined(handler)) {
-          return false;
-        }
-        if (isFunction(handler)) {
-          switch (arguments.length) {
-            case 1:
-              handler.call(this);
-              break;
-            case 2:
-              handler.call(this, arguments[1]);
-              break;
-            case 3:
-              handler.call(this, arguments[1], arguments[2]);
-              break;
-            default:
-              args = Array.prototype.slice.call(arguments, 1);
-              handler.apply(this, args);
-          }
-        } else if (isObject(handler)) {
-          args = Array.prototype.slice.call(arguments, 1);
-          listeners = handler.slice();
-          len = listeners.length;
-          for (i = 0; i < len; i++) {
-            listeners[i].apply(this, args);
-          }
-        }
-        return true;
-      };
-      EventEmitter.prototype.addListener = function(type, listener) {
-        var m;
-        if (!isFunction(listener)) {
-          throw TypeError("listener must be a function");
-        }
-        if (!this._events) {
-          this._events = {};
-        }
-        if (this._events.newListener) {
-          this.emit("newListener", type, isFunction(listener.listener) ? listener.listener : listener);
-        }
-        if (!this._events[type]) {
-          this._events[type] = listener;
-        } else if (isObject(this._events[type])) {
-          this._events[type].push(listener);
-        } else {
-          this._events[type] = [this._events[type], listener];
-        }
-        if (isObject(this._events[type]) && !this._events[type].warned) {
-          if (!isUndefined(this._maxListeners)) {
-            m = this._maxListeners;
-          } else {
-            m = EventEmitter.defaultMaxListeners;
-          }
-          if (m && m > 0 && this._events[type].length > m) {
-            this._events[type].warned = true;
-            console.error("(node) warning: possible EventEmitter memory leak detected. %d listeners added. Use emitter.setMaxListeners() to increase limit.", this._events[type].length);
-            if (typeof console.trace === "function") {
-              console.trace();
-            }
-          }
-        }
-        return this;
-      };
-      EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-      EventEmitter.prototype.once = function(type, listener) {
-        if (!isFunction(listener)) {
-          throw TypeError("listener must be a function");
-        }
-        var fired = false;
-        if (this._events.hasOwnProperty(type) && type.charAt(0) === "_") {
-          var count = 1;
-          var searchFor = type;
-          for (var k in this._events) {
-            if (this._events.hasOwnProperty(k) && k.startsWith(searchFor)) {
-              count++;
-            }
-          }
-          type = type + count;
-        }
-        function g() {
-          if (type.charAt(0) === "_" && !isNaN(type.substr(type.length - 1))) {
-            type = type.substring(0, type.length - 1);
-          }
-          this.removeListener(type, g);
-          if (!fired) {
-            fired = true;
-            listener.apply(this, arguments);
-          }
-        }
-        g.listener = listener;
-        this.on(type, g);
-        return this;
-      };
-      EventEmitter.prototype.removeListener = function(type, listener) {
-        var list, position, length, i;
-        if (!isFunction(listener)) {
-          throw TypeError("listener must be a function");
-        }
-        if (!this._events || !this._events[type]) {
-          return this;
-        }
-        list = this._events[type];
-        length = list.length;
-        position = -1;
-        if (list === listener || isFunction(list.listener) && list.listener === listener) {
-          delete this._events[type];
-          if (this._events.hasOwnProperty(type + "2") && type.charAt(0) === "_") {
-            var searchFor = type;
-            for (var k in this._events) {
-              if (this._events.hasOwnProperty(k) && k.startsWith(searchFor)) {
-                if (!isNaN(parseInt(k.substr(k.length - 1)))) {
-                  this._events[type + parseInt(k.substr(k.length - 1) - 1)] = this._events[k];
-                  delete this._events[k];
-                }
-              }
-            }
-            this._events[type] = this._events[type + "1"];
-            delete this._events[type + "1"];
-          }
-          if (this._events.removeListener) {
-            this.emit("removeListener", type, listener);
-          }
-        } else if (isObject(list)) {
-          for (i = length; i-- > 0; ) {
-            if (list[i] === listener || list[i].listener && list[i].listener === listener) {
-              position = i;
-              break;
-            }
-          }
-          if (position < 0) {
-            return this;
-          }
-          if (list.length === 1) {
-            list.length = 0;
-            delete this._events[type];
-          } else {
-            list.splice(position, 1);
-          }
-          if (this._events.removeListener) {
-            this.emit("removeListener", type, listener);
-          }
-        }
-        return this;
-      };
-      EventEmitter.prototype.removeAllListeners = function(type) {
-        var key, listeners;
-        if (!this._events) {
-          return this;
-        }
-        if (!this._events.removeListener) {
-          if (arguments.length === 0) {
-            this._events = {};
-          } else if (this._events[type]) {
-            delete this._events[type];
-          }
-          return this;
-        }
-        if (arguments.length === 0) {
-          for (key in this._events) {
-            if (key === "removeListener") {
-              continue;
-            }
-            this.removeAllListeners(key);
-          }
-          this.removeAllListeners("removeListener");
-          this._events = {};
-          return this;
-        }
-        listeners = this._events[type];
-        if (isFunction(listeners)) {
-          this.removeListener(type, listeners);
-        } else if (listeners) {
-          while (listeners.length) {
-            this.removeListener(type, listeners[listeners.length - 1]);
-          }
-        }
-        delete this._events[type];
-        return this;
-      };
-      EventEmitter.prototype.listeners = function(type) {
-        var ret;
-        if (!this._events || !this._events[type]) {
-          ret = [];
-        } else if (isFunction(this._events[type])) {
-          ret = [this._events[type]];
-        } else {
-          ret = this._events[type].slice();
-        }
-        return ret;
-      };
-      EventEmitter.prototype.listenerCount = function(type) {
-        if (this._events) {
-          var evlistener = this._events[type];
-          if (isFunction(evlistener)) {
-            return 1;
-          } else if (evlistener) {
-            return evlistener.length;
-          }
-        }
-        return 0;
-      };
-      EventEmitter.listenerCount = function(emitter, type) {
-        return emitter.listenerCount(type);
-      };
-      function isFunction(arg) {
-        return typeof arg === "function";
-      }
-      function isNumber(arg) {
-        return typeof arg === "number";
-      }
-      function isObject(arg) {
-        return typeof arg === "object" && arg !== null;
-      }
-      function isUndefined(arg) {
-        return arg === void 0;
-      }
     }
   });
 
@@ -585,12 +399,12 @@ var tmi = (() => {
     "lib/client.js"(exports, module) {
       var _global = typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : {};
       var _WebSocket = _global.WebSocket || __require("ws");
-      var EventEmitter = require_events().EventEmitter;
+      var EventEmitter = require_events();
       var logger = require_logger();
       var parse = require_parser();
       var Queue = require_timer();
       var _ = require_utils();
-      var client = class extends EventEmitter {
+      var Client = class extends EventEmitter {
         constructor(opts) {
           super();
           this.opts = opts ?? {};
@@ -636,18 +450,6 @@ var tmi = (() => {
           } catch (err) {
           }
           this.opts.channels.forEach((n, i, a) => a[i] = _.channel(n));
-          EventEmitter.call(this);
-          this.setMaxListeners(0);
-        }
-        // Emit multiple events..
-        emits(types, values) {
-          for (let i = 0; i < types.length; i++) {
-            const val = i < values.length ? values[i] : values[values.length - 1];
-            this.emit.apply(this, [types[i]].concat(val));
-          }
-        }
-        off(event, listener) {
-          this.removeListener(event, listener);
         }
         // Handle parsed chat server message..
         handleMessage(message) {
@@ -1503,25 +1305,17 @@ ${JSON.stringify(message, null, 4)}`);
           return this.say(channel, message, { "reply-parent-msg-id": parentId });
         }
       };
-      if (typeof module !== "undefined" && module.exports) {
-        module.exports = client;
-      }
-      if (typeof window !== "undefined") {
-        window.tmi = {
-          client,
-          Client: client
-        };
-      }
+      module.exports = Client;
     }
   });
 
   // index.js
   var require_tmi = __commonJS({
     "index.js"(exports, module) {
-      var client = require_client();
+      var Client = require_client();
       module.exports = {
-        client,
-        Client: client
+        client: Client,
+        Client
       };
     }
   });
