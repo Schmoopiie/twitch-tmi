@@ -45,7 +45,7 @@
     "url": "https://github.com/tmijs/tmi.js/issues"
   },
   "dependencies": {
-    "ws": "8.17.0"
+    "ws": "^8.17.1"
   },
   "devDependencies": {
     "@babel/core": "7.24.7",
